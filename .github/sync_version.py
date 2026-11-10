@@ -11,7 +11,7 @@ WFS = [
     'build-rockchip-25.12.x.yml',
     'build-sunxi-cortexa53-25.12.x.yml',
 ]
-CFGS = ['x86-64/imm25.config', 'rockchip/imm25.config']
+CFGS = [pathlib.Path('x86-64/imm25.config'), pathlib.Path('rockchip/imm25.config')]
 
 OLD_V, NEW_V = '25.12.1', '25.12.2'
 OLD_LINE = '        default: "%s"' % OLD_V
@@ -30,8 +30,7 @@ for name in WFS:
         continue
     text = p.read_text(encoding='utf-8')
     n = text.count(OLD_LINE)
-    m = text.count(NEW_LINE)
-    print('%-46s old=%d new_before=%d' % (name, n, m))
+    print('%-46s old=%d' % (name, n))
     if n != 1:
         ok = False
         continue
@@ -41,21 +40,20 @@ for name in WFS:
     if after.count(OLD_LINE) != 0 or after.count(NEW_LINE) != 1:
         ok = False
 
-for name in CFGS:
-    p = pathlib.Path(name)
+for p in CFGS:
     if not p.exists():
         print('MISSING', p)
         ok = False
         continue
     text = p.read_text(encoding='utf-8')
     n = text.count(OLD_REPO)
-    print('%-46s old_repo=%d' % (name, n))
+    print('%-46s old_repo=%d' % (str(p), n))
     if n != 1:
         ok = False
         continue
     p.write_text(text.replace(OLD_REPO, NEW_REPO), encoding='utf-8')
     after = p.read_text(encoding='utf-8')
-    print('%-46s old_after=%d new_after=%d' % (name, after.count(OLD_REPO), after.count(NEW_REPO)))
+    print('%-46s old_after=%d new_after=%d' % (str(p), after.count(OLD_REPO), after.count(NEW_REPO)))
     if after.count(OLD_REPO) != 0 or after.count(NEW_REPO) != 1:
         ok = False
     for line in after.splitlines():
@@ -64,7 +62,7 @@ for name in CFGS:
 
 # global residual check
 residual = []
-for p in list(WF_DIR.rglob('*.yml')) + list(CFGS):
+for p in list(WF_DIR.rglob('*.yml')) + CFGS:
     if not p.exists():
         continue
     t = p.read_text(encoding='utf-8', errors='replace')

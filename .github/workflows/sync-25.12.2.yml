@@ -1,3 +1,4 @@
+# one-shot version sync workflow; deletes itself in the commit it produces
 name: sync-25.12.2
 
 on:
