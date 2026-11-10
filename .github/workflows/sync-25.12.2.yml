@@ -1,4 +1,4 @@
-# one-shot version sync workflow; deletes itself in the commit it produces
+# one-shot version sync workflow; pushes result to a side branch for review/merge
 name: sync-25.12.2
 
 on:
@@ -27,7 +27,7 @@ jobs:
           cp /tmp/sync.log .github/sync_debug.log
           cat /tmp/sync.log
 
-      - name: Push result
+      - name: Push result to side branch
         if: always()
         run: |
           git config user.name 'github-actions[bot]'
@@ -38,7 +38,7 @@ jobs:
           if [ "${{ steps.apply.outcome }}" = "success" ]; then
             echo "branch=success"
             git reset -q -- .github/sync_debug.log || true
-            git commit -F .github/sync_report.txt
+            git commit -F .github/sync_report.txt || git commit -m 'sync (no report)'
           else
             echo "branch=failure"
             git reset -q --hard
@@ -46,4 +46,4 @@ jobs:
             git add .github/sync_debug.log
             git commit -m 'debug: version sync step failed, log committed for diagnosis'
           fi
-          git push origin HEAD:refs/heads/master
+          git push origin HEAD:refs/heads/sync-25.12.2-result
