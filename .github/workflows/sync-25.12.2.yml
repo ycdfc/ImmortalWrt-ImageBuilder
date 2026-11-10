@@ -1,0 +1,58 @@
+name: sync-25.12.2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-25.12.2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Apply version sync
+        run: |
+          set -euo pipefail
+
+          # 1) 25.12.x workflows: default luci_version 25.12.1 -> 25.12.2
+          for f in \
+            .github/workflows/build-x86-64-25.12.x.yml \
+            .github/workflows/build-iso-25.12.x.yml \
+            .github/workflows/build-rockchip-25.12.x.yml \
+            .github/workflows/build-sunxi-cortexa53-25.12.x.yml ; do
+            sed -i 's/^        default: "25.12.1"$/        default: "25.12.2"/' "$f"
+            echo "$(grep -n 'default: "25.12' "$f" | head -1)  <- $f"
+          done
+
+          # 2) imm25.config: CONFIG_VERSION_REPO 25.12.0-rc1 -> 25.12.2
+          sed -i 's|https://downloads.immortalwrt.org/releases/25.12.0-rc1|https://downloads.immortalwrt.org/releases/25.12.2|' \
+            x86-64/imm25.config rockchip/imm25.config
+          grep -c 'CONFIG_VERSION_REPO="https://downloads.immortalwrt.org/releases/25.12.2"' \
+            x86-64/imm25.config rockchip/imm25.config
+
+          # 3) guards: 不允许残留旧值
+          if grep -rn 'default: "25.12.1"' .github/workflows/ ; then
+            echo 'ERROR: residual 25.12.1 default'; exit 1
+          fi
+          if grep -rn '25.12.0-rc1' x86-64/imm25.config rockchip/imm25.config ; then
+            echo 'ERROR: residual 25.12.0-rc1 repo url'; exit 1
+          fi
+
+          # 4) 本次是一次性工作流，随同一次提交移除
+          rm .github/workflows/sync-25.12.2.yml
+          git diff --stat
+          git status --porcelain
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: sync ImmortalWrt version to 25.12.2 (25.12.x workflow default + imm25.config repo URL)'
+          git push
