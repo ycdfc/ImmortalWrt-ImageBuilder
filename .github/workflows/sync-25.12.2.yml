@@ -22,9 +22,7 @@ jobs:
         run: |
           python3 .github/sync_version.py > /tmp/sync.log 2>&1
           echo "PYTHON_EXIT=$?" >> /tmp/sync.log
-          echo "--- pwd ---" >> /tmp/sync.log
-          pwd >> /tmp/sync.log
-          echo "--- ls ---" >> /tmp/sync.log
+          echo "--- ls .github ---" >> /tmp/sync.log
           ls -la .github >> /tmp/sync.log 2>&1
           cp /tmp/sync.log .github/sync_debug.log
           cat /tmp/sync.log
@@ -34,15 +32,18 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          echo "HEAD_REF=$(git rev-parse --abbrev-ref HEAD)"
           git add -A
           git reset -q -- .github/sync_report.txt || true
           if [ "${{ steps.apply.outcome }}" = "success" ]; then
+            echo "branch=success"
             git reset -q -- .github/sync_debug.log || true
             git commit -F .github/sync_report.txt
           else
+            echo "branch=failure"
             git reset -q --hard
             cp /tmp/sync.log .github/sync_debug.log
             git add .github/sync_debug.log
             git commit -m 'debug: version sync step failed, log committed for diagnosis'
           fi
-          git push
+          git push origin HEAD:refs/heads/master
