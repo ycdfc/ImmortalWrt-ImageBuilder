@@ -25,25 +25,25 @@ jobs:
             .github/workflows/build-iso-25.12.x.yml \
             .github/workflows/build-rockchip-25.12.x.yml \
             .github/workflows/build-sunxi-cortexa53-25.12.x.yml ; do
-            sed -i 's/^        default: "25.12.1"$/        default: "25.12.2"/' "$f"
-            echo "$(grep -n 'default: "25.12' "$f" | head -1)  <- $f"
+            sed -i -E 's/(^        default: )"25\.12\.1"/\1"25.12.2"/' "$f"
+            echo "---- $f"
+            grep -n -E 'default: "25\.12' "$f" | head -2
           done
 
           # 2) imm25.config: CONFIG_VERSION_REPO 25.12.0-rc1 -> 25.12.2
-          sed -i 's|https://downloads.immortalwrt.org/releases/25.12.0-rc1|https://downloads.immortalwrt.org/releases/25.12.2|' \
+          sed -i -E 's|releases/25\.12\.0-rc1"|releases/25.12.2"|' \
             x86-64/imm25.config rockchip/imm25.config
-          grep -c 'CONFIG_VERSION_REPO="https://downloads.immortalwrt.org/releases/25.12.2"' \
-            x86-64/imm25.config rockchip/imm25.config
+          grep -n -E 'CONFIG_VERSION_REPO=' x86-64/imm25.config rockchip/imm25.config
 
-          # 3) guards: 不允许残留旧值
-          if grep -rn 'default: "25.12.1"' .github/workflows/ ; then
+          # 3) guards
+          if grep -rn -E 'default: "25\.12\.1"' .github/workflows/ ; then
             echo 'ERROR: residual 25.12.1 default'; exit 1
           fi
           if grep -rn '25.12.0-rc1' x86-64/imm25.config rockchip/imm25.config ; then
             echo 'ERROR: residual 25.12.0-rc1 repo url'; exit 1
           fi
 
-          # 4) 本次是一次性工作流，随同一次提交移除
+          # 4) one-shot workflow removes itself in the same commit
           rm .github/workflows/sync-25.12.2.yml
           git diff --stat
           git status --porcelain
