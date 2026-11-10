@@ -17,14 +17,32 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Apply version sync
-        run: python3 .github/sync_version.py
+        id: apply
+        continue-on-error: true
+        run: |
+          python3 .github/sync_version.py > /tmp/sync.log 2>&1
+          echo "PYTHON_EXIT=$?" >> /tmp/sync.log
+          echo "--- pwd ---" >> /tmp/sync.log
+          pwd >> /tmp/sync.log
+          echo "--- ls ---" >> /tmp/sync.log
+          ls -la .github >> /tmp/sync.log 2>&1
+          cp /tmp/sync.log .github/sync_debug.log
+          cat /tmp/sync.log
 
-      - name: Commit and push
+      - name: Push result
+        if: always()
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git status --porcelain
           git add -A
-          git reset -q -- .github/sync_report.txt
-          git commit -F .github/sync_report.txt
+          git reset -q -- .github/sync_report.txt || true
+          if [ "${{ steps.apply.outcome }}" = "success" ]; then
+            git reset -q -- .github/sync_debug.log || true
+            git commit -F .github/sync_report.txt
+          else
+            git reset -q --hard
+            cp /tmp/sync.log .github/sync_debug.log
+            git add .github/sync_debug.log
+            git commit -m 'debug: version sync step failed, log committed for diagnosis'
+          fi
           git push
